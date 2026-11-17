@@ -1,0 +1,4 @@
+# Say the phrase on its own and the text after = is typed instead. One per line. \n makes a new line.
+my website = https://example.com
+my email = you@example.com
+my calendar link = https://example.com/book

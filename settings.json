@@ -1,0 +1,6 @@
+{
+  "meetings_folder": "~/Earshot Meetings",
+  "answer_seconds": 60,
+  "pitch_timer": true,
+  "call_reviews": true
+}

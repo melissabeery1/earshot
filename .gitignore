@@ -1,0 +1,24 @@
+# Models (downloads, see models/README.md)
+models/*.bin
+models/warm.wav
+
+# Your own files: never commit these
+words.txt
+snippets.txt
+history.txt
+stats.csv
+
+# Built helpers (everyone builds their own)
+dictrec/dictrec
+meetcap/meetcap
+calcheck/Meeting Prep.app/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Leftovers
+*.bak-*
+*.log
+.DS_Store

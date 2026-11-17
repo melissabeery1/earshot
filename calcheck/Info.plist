@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleIdentifier</key><string>org.earshot.meetingprep</string>
+  <key>CFBundleName</key><string>Meeting Prep</string>
+  <key>CFBundleDisplayName</key><string>Meeting Prep</string>
+  <key>CFBundleExecutable</key><string>calcheck</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSUIElement</key><true/>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>NSCalendarsFullAccessUsageDescription</key><string>Reads your upcoming meetings so you can add a goal and prep notes before each call. Everything stays on this Mac.</string>
+  <key>NSCalendarsUsageDescription</key><string>Reads your upcoming meetings so you can add a goal and prep notes before each call. Everything stays on this Mac.</string>
+</dict></plist>
