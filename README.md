@@ -17,6 +17,7 @@ The whole thing was built in one long working session between a non-engineer and
 - [Install](#install)
 - [Using it day to day](#using-it-day-to-day)
 - [How it works](#how-it-works)
+- [Make it yours: your own menu bar icon](#make-it-yours-your-own-menu-bar-icon)
 - [Testing without a live call](#testing-without-a-live-call)
 - [Troubleshooting](#troubleshooting)
 - [How it was built](#how-it-was-built)
@@ -251,6 +252,7 @@ In the meetings folder itself: `calls.html` (All my calls), `patterns.json` (wha
 | `pitch_replay.py` | Replays part of a recorded call in real time, to test the pitch timer |
 | `settings.json` | Where meetings are kept, the answer target, and whether the pitch timer and reviews are on |
 | `icons/` | The menu bar icons: idle, listening, and recording a call |
+| `make_icons.py` | Makes your own icons, in your colours or from your photo |
 | `words.example.txt`, `snippets.example.txt` | Starting points for your word list and snippets |
 | `models/` | The speech models and the warm-up clip (see `models/README.md`) |
 
@@ -266,6 +268,43 @@ In the meetings folder itself: `calls.html` (All my calls), `patterns.json` (wha
 | `meetings.lua`: `QUIET_STOP` | Seconds of silence before a recording stops by itself (240) |
 | `meeting_coach.py` | The benchmark bars (talk share, monologue, follow-ups) |
 | `meeting_review.py`: `SCHEMA`, `PROMPT` | What the review contains and how Claude is asked for it |
+
+## Make it yours: your own menu bar icon
+
+The menu bar icon keeps its colours. Most menu bar icons are "template" images, which macOS turns black and white to match the bar. This one isn't: the code calls `setIcon(img, false)`, and `false` tells macOS to show the picture as it is. So your icon can be any colour, or your own face.
+
+There are three icons, in `icons/`:
+
+| File | When it shows |
+|---|---|
+| `idle.png` | Most of the time. It's also the picture on review notifications |
+| `listening.png` | While you dictate. The idle icon with a coloured ring |
+| `recording.png` | While a call is recording. A dark ring and a red dot |
+
+**Make all three in one line** with `make_icons.py` (it needs Pillow: `.venv/bin/pip install pillow`):
+
+```bash
+# a disc in your colours
+.venv/bin/python make_icons.py --color "#1B4F8F" --mark "#FFFFFF" --ring "#7FB8F0"
+
+# your photo, cropped to a circle
+.venv/bin/python make_icons.py --photo ~/Pictures/me.jpg
+
+# your photo in shades of one colour, which reads better at this size
+.venv/bin/python make_icons.py --photo ~/Pictures/me.jpg --tint "#F4C6D6" --ring "#E57BA6"
+```
+
+Then choose **Restart dictation** in the menu.
+
+| Option | What it sets |
+|---|---|
+| `--color`, `--mark` | The disc and its sound waves, when there's no photo |
+| `--photo` | A photo to use instead, cropped from just above the middle so a face sits well |
+| `--tint` | Turns the photo into shades of one colour |
+| `--ring` | The ring while you dictate |
+| `--rec-ring`, `--dot` | The ring and dot while a call records |
+
+**Drawing your own by hand** works too. Make three PNGs, 104 pixels square, with a transparent background, and keep the important part inside the middle 76 pixels so the ring and dot have room. The menu bar shows them at 26 points, which is why 104 pixels stays sharp on a Retina screen. Keep shapes bold: fine detail disappears at that size. Your icons are yours, so if you'd rather not share your face, add `icons/` to `.gitignore` in your copy.
 
 ## Testing without a live call
 
