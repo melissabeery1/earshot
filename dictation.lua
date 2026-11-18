@@ -372,6 +372,17 @@ M.warm = hs.timer.doEvery(150, function()
     "-F", "response_format=text", "http://127.0.0.1:" .. PORT .. "/inference" }):start()
 end)
 
+-- Self-repair. macOS quietly switches off an event tap whenever Hammerspoon is slow for a moment, and nothing
+-- switches it back on, so Fn just stops working until a restart. Every 5 seconds this turns the Fn listener
+-- back on if it's off, and restarts the speech server or the recorder if either has stopped.
+M.watchdog = hs.timer.doEvery(5, function()
+  if not M.tap:isEnabled() then M.tap:start(); print("dictation: Fn listener was off, turned it back on") end
+  if not rec and not working then
+    if not (server and server:isRunning()) then startServer(); print("dictation: restarted the speech server") end
+    if not (recorder and recorder:isRunning()) then startRecorder() end
+  end
+end)
+
 startServer()
 startRecorder()
 M.tap:start()

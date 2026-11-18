@@ -317,13 +317,28 @@ function M.start(goal)
 end
 
 -- While recording: add or change the goal (the review reads it from meeting.json).
+-- The goal box is a web panel, not hs.dialog.textPrompt. A textPrompt is modal: until it's answered, all of
+-- Hammerspoon stops (dictation included) and the app can't be quit. Lost behind other windows, it looks like a hang.
+local function goalPanel(hint, current, onSave)
+  local v = (current or ""):gsub("&", "&amp;"):gsub('"', "&quot;"):gsub("<", "&lt;")
+  webPanel(360, 176, [[
+    <h1>This call's goal</h1><p class="hint">]] .. hint .. [[</p>
+    <input id="g" maxlength="160" value="]] .. v .. [[" onkeydown="if(event.key==='Enter'){]] .. send("{go:true,goal:g.value}") .. [[}">
+    <div class="row"><button class="go" onclick="]] .. send("{go:true,goal:g.value}") .. [[">Save</button>
+      <button class="no" onclick="]] .. send("{go:false}") .. [[">Cancel</button></div>]],
+    function(b)
+      closePanel()
+      if b.go then onSave(((b.goal or ""):gsub("^%s+", ""):gsub("%s+$", ""))) end
+    end, "This call's goal")
+end
+
 function M.setGoal()
   if not active then return end
   local path = active.folder .. "/meeting.json"
   local meta = hs.json.read(path) or {}
-  local btn, text = hs.dialog.textPrompt("This call's goal", "What do you want from this call? The review judges it against this.",
-    meta.goal or "", "Save", "Cancel")
-  if btn == "Save" then meta.goal = text; hs.json.write(meta, path, true, true) end
+  goalPanel("What do you want from this call? The review judges it against this.", meta.goal, function(text)
+    meta.goal = text; hs.json.write(meta, path, true, true)
+  end)
 end
 
 M.selfCheck = function(folder) selfCheck(folder) end
@@ -332,15 +347,15 @@ M.selfCheck = function(folder) selfCheck(folder) end
 function M.goalFor(folder)
   local path = folder .. "/meeting.json"
   local meta = hs.json.read(path) or {}
-  local btn, text = hs.dialog.textPrompt("This call's goal",
-    "What did you want from this call? The review will be redone against it (about a minute).", meta.goal or "", "Save", "Cancel")
-  if btn ~= "Save" then return end
-  meta.goal = text
-  hs.json.write(meta, path, true, true)
-  if hs.fs.attributes(folder .. "/transcript.md") then
-    hs.task.new(PYTHON, nil, { HERE .. "/meeting_review.py", folder, "--notify" }):start()
-    hs.alert.show("Goal saved. Redoing the review; a notification will say when it's ready.", 4)
-  end
+  goalPanel("What did you want from this call? The review will be redone against it (about a minute).", meta.goal,
+    function(text)
+      meta.goal = text
+      hs.json.write(meta, path, true, true)
+      if hs.fs.attributes(folder .. "/transcript.md") then
+        hs.task.new(PYTHON, nil, { HERE .. "/meeting_review.py", folder, "--notify" }):start()
+        hs.alert.show("Goal saved. Redoing the review; a notification will say when it's ready.", 4)
+      end
+    end)
 end
 M.currentPanel = function() return panel end             -- for testing the panels
 M.closePanel = function() closePanel() end

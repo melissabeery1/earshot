@@ -332,7 +332,8 @@ Then choose **Restart dictation** in the menu.
 
 | What you see | What to do |
 |---|---|
-| Nothing happens when you hold Fn | Check Accessibility for Hammerspoon, then Restart dictation |
+| Nothing happens when you hold Fn | Wait 5 seconds and try again: dictation turns the Fn listener back on by itself if macOS switched it off. Still nothing? Check Accessibility for Hammerspoon, then Restart dictation |
+| Hammerspoon is frozen and won't quit | Press Option-Command-Escape, choose Hammerspoon and click Force Quit, then open it again. If it keeps happening, open the Hammerspoon console and look at the last lines before the freeze |
 | "Dictation is starting up" | The speech model takes a few seconds to load after login |
 | Dictation types nonsense | Check which mic it's using: it's built to use the Mac's own. Bluetooth headset mics are muffled and confuse Whisper |
 | The other side of a call is silent | Allow Screen & System Audio Recording for Hammerspoon. FaceTime can't be captured |
@@ -434,7 +435,8 @@ Whisper takes about a second, and people start answering faster than that. So th
 - **Your own calendar events look different from invites.** Events you create often have no guests, and Google keeps Meet links where the Mac's calendar doesn't show them. So every timed event counts as a possible call, except daily repeats, flights and long blocks.
 - **The review needs its own sign-in, and a lean setup.** The command line's normal sign-in is shared with the Claude desktop app, so one would sign the other out. A long-lived token from `claude setup-token` fixed that. And with every plugin and connected app loaded, a one-line request was 260,000 tokens and refused, so reviews run with `--strict-mcp-config --disable-slash-commands` from an empty folder (about 10,000).
 - **Review notifications come through a marker file.** The review runs as a detached process, so it can't call back into Hammerspoon. Instead it drops a `review-new` file, and a folder watcher turns that into a clickable notification.
-- **Panels that take typing are small web views.** Hammerspoon's drawing canvas can't take keyboard input, so the record, prep and self-rating panels are tiny web pages that post their answers back. They never take focus from your call app until you click into them.
+- **Panels that take typing are small web views.** Hammerspoon's drawing canvas can't take keyboard input, so the record, prep, goal and self-rating panels are tiny web pages that post their answers back. They never take focus from your call app until you click into them. The goal box first used Hammerspoon's built-in text prompt. That prompt is modal: until it's answered, all of Hammerspoon stops, dictation included, and the app can't be quit. When it slipped behind other windows, the whole thing looked broken.
+- **Dictation repairs itself.** macOS switches off a key listener (an event tap) whenever the app that owns it stalls, even briefly, and never switches it back on. Fn simply stopped working until a restart. A 5-second check now turns the listener back on and restarts the speech server or the recorder if either has stopped.
 - **Typesetting rules are enforced in code.** The pages pass a layout checker at four widths: no single word alone on a last line, and no sentence starting at the end of a line. The page generator joins words with non-breaking spaces where needed.
 
 ## Going fully local
