@@ -164,7 +164,12 @@ function transcribe(WAV)
   local audio = f:read("*a"); f:close()
   local b = "----dictation" .. tostring(math.random(1e9))
   local function field(n, v) return "--" .. b .. "\r\nContent-Disposition: form-data; name=\"" .. n .. "\"\r\n\r\n" .. v .. "\r\n" end
-  local body = field("response_format", "text") .. field("prompt", words())
+  -- Speed: Whisper reads a 30-second window however short the clip, which took 3.5 seconds on every clip
+  -- (Apple M4). The window is sized to the clip instead (50 steps a second, plus a margin, at least 512): a
+  -- short clip comes back in about a second. Below 512 short clips came back garbled, so that's the floor.
+  local secs = math.max(0, #audio - 44) / 32000                     -- 16 kHz, 16-bit, one channel
+  local ctx = math.min(1500, math.max(512, math.ceil((secs * 50 * 1.25 + 64) / 64) * 64))
+  local body = field("response_format", "text") .. field("prompt", words()) .. field("audio_ctx", tostring(ctx))
     .. "--" .. b .. "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.wav\"\r\nContent-Type: audio/wav\r\n\r\n"
     .. audio .. "\r\n--" .. b .. "--\r\n"
   show("Writing…")
@@ -387,7 +392,7 @@ M.warm = hs.timer.doEvery(150, function()
   hs.task.new("/usr/bin/curl", function(code)
     if code == 28 and not rec and not working then restartServer("the warm-up clip got no answer") end
   end, { "-s", "-m", "20", "-o", "/dev/null", "-F", "file=@" .. WARM,
-    "-F", "response_format=text", "http://127.0.0.1:" .. PORT .. "/inference" }):start()
+    "-F", "response_format=text", "-F", "audio_ctx=512", "http://127.0.0.1:" .. PORT .. "/inference" }):start()
 end)
 
 -- Self-repair. macOS quietly switches off an event tap whenever Hammerspoon is slow for a moment, and nothing
