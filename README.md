@@ -41,6 +41,8 @@ The whole thing was built in one long working session between a non-engineer and
 
 - Your next two weeks of calendar events show in the menu. Click one to write what you want from the call, plus prep notes: questions to ask, things to mention.
 - When a call is booked, a notification invites you to prep it. An hour before a prepped call, you're reminded of your goal.
+- **Get ideas.** Say what the call is about and press Get ideas. In about 15 seconds Claude suggests an opener, things to touch on, questions to ask and the habit of yours to watch, based on your learnings and any past call with the same people. **Add** puts an idea in your prep notes.
+- A call that isn't on your calendar can be prepped too: Upcoming calls: prep › Prep a call that's not on my calendar.
 
 ### Meeting recorder
 
@@ -76,6 +78,10 @@ The whole thing was built in one long working session between a non-engineer and
 ### All my calls
 
 One private page with every reviewed call: the latest grade, trend charts, and a summary of what keeps coming up across calls and what's getting better. A dashed line shows your self-ratings against the review's. A second tab, **The science**, explains every measure and links to the studies behind it.
+
+### My learnings
+
+Every reviewed call also gets `learnings.md`: the one habit to work on with a line to practise, what worked, what to change with the words to try, the follow-up questions you could have asked, and the numbers. `Learnings.md` in the meetings folder pulls them together: your focus right now, what keeps coming up, what's getting better, the trend call by call, and a playbook of lines that worked and lines to try. Both rebuild after every review from the review itself, so they cost nothing extra. Download them from the review pages, open them from the menu, or hand them to Claude before a call.
 
 ## The research behind the grade
 
@@ -194,6 +200,7 @@ Everything lives in the menu bar icon.
 | Upcoming calls: prep | Your next two weeks. ✓ marks calls you've prepped |
 | Recent meetings › a call | Open transcript, Listening scorecard, Call review, Rate my listening, Add or change this call's goal, Write notes with Claude, Coach me with Claude |
 | All my calls: grades and trends | The history page |
+| My learnings, across all calls | Learnings.md |
 | Restart dictation | Reload everything |
 
 ### What each call's folder contains
@@ -210,8 +217,9 @@ Every call gets a folder like `2026-01-15 1000 Call/` in your meetings folder (`
 | `selfcheck.json` | Your own ratings |
 | `pitches.json` | Each open question and how long your answer took |
 | `review.json`, `review.html` | Claude's review, and the page made from it |
+| `learnings.md` | The review as markdown |
 
-In the meetings folder itself: `calls.html` (All my calls), `patterns.json` (what keeps coming up), `prep.json` (your goals and notes before calls) and `upcoming-calendar.json` (the next two weeks).
+In the meetings folder itself: `calls.html` (All my calls), `Learnings.md` (your learnings across calls), `patterns.json` (what keeps coming up), `prep.json` (your goals and notes before calls) and `upcoming-calendar.json` (the next two weeks).
 
 ## How it works
 

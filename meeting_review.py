@@ -576,6 +576,7 @@ nav.sticky .all {{ color: var(--you); flex: none; }}
 h2 {{ font: 600 clamp(22px, 2vw, 30px)/1.2 "New York", Georgia, serif; margin: 0; color: var(--title); }}
 .sub {{ margin: 0; color: var(--soft); text-align: right; flex: 1 1 340px; }}
 header .top {{ display: flex; justify-content: space-between; gap: 24px; }}
+header .top a.dl {{ color: inherit; text-decoration: underline; text-underline-offset: 3px; }}
 .grid {{ display: grid; gap: 18px; }}
 .grid.three {{ grid-template-columns: repeat(3, 1fr); }}
 .grid.four {{ grid-template-columns: repeat(4, 1fr); }}
@@ -654,7 +655,7 @@ body.playing {{ padding-bottom: 72px; }}
 </style></head>
 <body class="{'' if has_audio else 'noaudio'}">
 <header id="top">
-  <div class="top"><p class="when">{t("Call review · " + when)}</p><p class="when">{e(length)}</p></div>
+  <div class="top"><p class="when">{t("Call review · " + when)}</p><p class="when">{e(length)} · <a class="dl" href="learnings.md" download>Download learnings (.md)</a></p></div>
   <div class="verdict">
     <div class="grade"><div class="letter">{e(letter)}</div><div class="gl">Overall</div></div>
     <div class="vtext"><h1>{t(r["verdict"])}</h1>

@@ -107,10 +107,10 @@ def patterns(items, force=False):
 
 def chart(items, value, lo, hi, fmt, band=None, line=None, label=None, better="up", second=None):
     """A small line chart as inline SVG: one point per call, oldest on the left."""
-    W, H, L, R, T, B = 340, 210, 40, 14, 24, 30
+    W, H, L, R, T, B = 340, 210, 44, 30, 26, 30   # room on the right, so the last date isn't cut off
     pts = [(i, value(c)) for i, c in enumerate(items) if value(c) is not None]
     n = max(1, len(items) - 1)
-    x = lambda i: L + (W - L - R) * (i / n if len(items) > 1 else 0.5)
+    x = lambda i: L + 14 + (W - L - R - 28) * (i / n if len(items) > 1 else 0.5)   # inset, so labels clear the axis
     y = lambda v: T + (H - T - B) * (1 - (min(max(v, lo), hi) - lo) / (hi - lo))
     g = []
     if band:
@@ -127,7 +127,10 @@ def chart(items, value, lo, hi, fmt, band=None, line=None, label=None, better="u
         tip = f"{items[i]['when'].strftime('%-d %b')}: {fmt(v)}"
         g.append(f'<circle cx="{x(i):.1f}" cy="{y(v):.1f}" r="6" class="pt"><title>{e(tip)}</title></circle>')
         lab = label(items[i]) if label else fmt(v)
-        g.append(f'<text x="{x(i):.1f}" y="{y(v) - 12:.1f}" class="pl" text-anchor="middle">{e(lab)}</text>')
+        above = y(v) - 12
+        if line is not None and abs(above - 4 - y(line)) < 9:      # the label would sit on the target line
+            above = y(v) + 22
+        g.append(f'<text x="{x(i):.1f}" y="{above:.1f}" class="pl" text-anchor="middle">{e(lab)}</text>')
     if second:
         sp = [(i, second(c)) for i, c in enumerate(items) if second(c) is not None]
         if len(sp) > 1:
@@ -283,7 +286,7 @@ def page(items, pats):
         cols = len(pats["keeps_coming_up"]) + len(pats["getting_better"])
         pat_html = f'''
   <div class="head"><h2>{t("Across your calls")}</h2><p class="sub">{t(pats["headline"])}</p></div>
-  <div class="grid" style="grid-template-columns: repeat({cols}, 1fr)">{keep}{good}</div>
+  <div class="grid flow">{keep}{good}</div>
   <div class="focus"><span>Practise on your next call</span>{t(pats["focus_next"])}</div>'''
 
     rows = []
@@ -325,6 +328,7 @@ header {{ background: var(--head-bg); color: var(--head-ink); padding: 40px 4vw 
 header .top {{ display: flex; justify-content: space-between; gap: 24px; color: var(--head-soft); font-size: 15px;
   letter-spacing: .06em; text-transform: uppercase; }}
 header .top p {{ margin: 0 0 10px; }}
+header .top a.dl {{ color: inherit; text-decoration: underline; text-underline-offset: 3px; }}
 .hero {{ display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; }}
 .big {{ background: #FFFFFF; color: #2B1626; border-radius: 18px; width: 128px; height: 128px; display: flex;
   flex-direction: column; align-items: center; justify-content: center; }}
@@ -358,7 +362,7 @@ h2 {{ font: 600 clamp(22px, 2vw, 30px)/1.2 "New York", Georgia, serif; margin: 0
 svg {{ width: 100%; height: auto; display: block; margin-top: auto; }}
 svg .grid {{ stroke: var(--line); stroke-width: 1; }}
 svg .ax {{ fill: var(--soft); font: 12px -apple-system, sans-serif; }}
-svg .pl {{ fill: var(--ink); font: 700 13px -apple-system, sans-serif; }}
+svg .pl {{ fill: var(--ink); font: 700 13px -apple-system, sans-serif; paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }}
 svg .ln {{ fill: none; stroke: var(--accent); stroke-width: 3; }}
 svg .pt {{ fill: var(--accent); stroke: var(--card); stroke-width: 2; }}
 svg .band {{ fill: var(--band); }}
@@ -372,6 +376,8 @@ svg .target {{ stroke: var(--good); stroke-width: 2; stroke-dasharray: 6 5; }}
 .tabnote {{ margin-left: auto; align-self: center; color: var(--head-soft); font-size: 14px; }}
 .tabs a.on {{ background: #FFFFFF; color: #2B1626; border-color: #FFFFFF; }}
 .pipe {{ grid-template-columns: repeat(5, 1fr); }}
+.grid.flow {{ display: flex; flex-wrap: wrap; }}
+.grid.flow > .card {{ flex: 1 1 300px; }}
 .step .num {{ font: 700 30px/1 "New York", Georgia, serif; color: var(--accent); }}
 .step .where {{ margin-top: auto !important; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }}
 .measures {{ grid-template-columns: repeat(3, 1fr); }}
@@ -426,7 +432,7 @@ footer p {{ margin: 0; border-top: 1px solid var(--line); padding-top: 18px; }}
 </style></head>
 <body>
 <header>
-  <div class="top"><p>All my calls · private, on this Mac</p><p>{len(items)} reviewed</p></div>
+  <div class="top"><p>All my calls · private, on this Mac</p><p>{len(items)} reviewed · <a class="dl" href="Learnings.md" download>Download my learnings (.md)</a></p></div>
   <div class="hero">
     <div class="big"><b>{e(latest["letter"] if latest else "–")}</b><span>Latest</span></div>
     <div class="htext"><h1>{t(pats["headline"] if pats else "How you listen, call by call")}</h1>
@@ -470,6 +476,12 @@ def main(force_patterns=False, want_patterns=True):
     path = os.path.join(MEET, "calls.html")
     with open(path, "w") as f:
         f.write(page(items, pats))
+    # The same reviews as markdown: each call's learnings.md and Learnings.md in the meetings folder.
+    try:
+        import meeting_learnings
+        meeting_learnings.main()
+    except Exception as err:                                         # the page matters more; say why and carry on
+        print("learnings not rebuilt:", err, file=sys.stderr)
     print(path)
 
 

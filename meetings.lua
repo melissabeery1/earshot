@@ -69,6 +69,7 @@ local function webPanel(w, h, html, onMessage, title)
   panel:windowCallback(function(action) if action == "closing" and panel == mine then panel = nil end end)
   panel:level(hs.drawing.windowLevels.floating):html("<!doctype html><meta charset='utf-8'><style>" .. CSS .. "</style>" .. html)
   panel:show()
+  M.panel = panel                                                   -- for checking a panel from the console
   return panel
 end
 
@@ -156,28 +157,90 @@ local function when(ev)
   return t and (os.date("%a %d %b, %I:%M %p", t):gsub(" 0", " ")) or ev.start
 end
 
--- The prep panel: what you want from the call, and anything to remember (questions, things to mention).
+-- The prep panel: what the call is about, what you want from it, and anything to remember.
+-- "Get ideas" asks Claude (meeting_ideas.py) for things to touch on, questions to ask and your own habit to
+-- watch, from what you typed, your learnings and any past call with the same people. The ideas show in the
+-- panel; "Add" puts one in your notes. A call that isn't on the calendar has ev.adhoc and a title box.
+local IDEAS_JS = [[
+<script>
+function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x) e.textContent = x; return e; }
+function addNote(txt) { var n = document.getElementById('n'); n.value = (n.value.trim() ? n.value.trim() + '\n' : '') + '- ' + txt; }
+function line(box, txt, sub) {
+  var r = el('div', 'idea'); var t = el('div', 'it'); t.appendChild(el('div', '', txt));
+  if (sub) t.appendChild(el('div', 'sub', sub));
+  var b = el('button', 'add', 'Add'); b.onclick = function () { addNote(txt); b.textContent = 'Added'; b.disabled = true; };
+  r.appendChild(t); r.appendChild(b); box.appendChild(r);
+}
+function showIdeas(d) {
+  var box = document.getElementById('ideas'); box.innerHTML = ''; document.getElementById('gi').disabled = false;
+  document.getElementById('gi').textContent = 'Get new ideas';
+  if (d.error) { box.appendChild(el('p', 'hint', d.error)); return; }
+  if (d.from_before) { box.appendChild(el('p', 'q', 'From last time')); line(box, d.from_before); }
+  box.appendChild(el('p', 'q', 'Open with')); line(box, d.opener);
+  box.appendChild(el('p', 'q', 'Things to touch on'));
+  (d.touch_on || []).forEach(function (x) { line(box, x.point, x.why); });
+  box.appendChild(el('p', 'q', 'Questions to ask'));
+  (d.questions || []).forEach(function (x) { line(box, x); });
+  box.appendChild(el('p', 'q', 'Watch for')); line(box, d.watch_for);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+function thinking() {
+  var b = document.getElementById('gi'); b.disabled = true; b.textContent = 'Thinking… about 15 seconds';
+}
+</script>
+<style>
+  body { overflow-y: auto; } textarea#a { height: 60px; }
+  .idea { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid rgba(128,128,128,.25); }
+  .it { flex: 1; } .sub { font-size: 13px; opacity: .75; margin-top: 2px; }
+  button.add { padding: 3px 12px; font-size: 13px; background: transparent; color: inherit; border-color: #8E878C; }
+  button:disabled { opacity: .6; cursor: default; }
+</style>]]
+
 function M.prepFor(ev)
   local all = readPrep()
   local p = all[ev.id] or {}
   local function esc(x) return (x or ""):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub('"', "&quot;") end
   local who = (#(ev.people or {}) > 0) and (" with " .. table.concat(ev.people, ", ")) or ""
-  webPanel(420, 368, [[
-    <h1>]] .. esc(ev.title) .. [[</h1>
-    <p class="hint">]] .. esc(when(ev) .. who) .. [[</p>
+  local head = ev.adhoc
+    and ([[<h1>Prep a call</h1><p class="q">Who or what is the call?</p>
+       <input id="t" maxlength="120" value="]] .. esc(p.title or "") .. [[" placeholder="e.g. Sam, about the pilot">]])
+    or ([[<h1>]] .. esc(ev.title) .. [[</h1><p class="hint">]] .. esc(when(ev) .. who) .. [[</p>]])
+  local fields = "{goal:g.value,notes:n.value,about:a.value" .. (ev.adhoc and ",title:t.value" or "") .. "}"
+  local pnl                                                         -- named first, so the callback below can see it
+  pnl = webPanel(460, 640, IDEAS_JS .. head .. [[
+    <p class="q">What's the call about?</p>
+    <textarea id="a" maxlength="600" placeholder="e.g. catching up with Sam about running a pilot with their team">]] .. esc(p.about) .. [[</textarea>
     <p class="q">What do you want from this call?</p>
-    <input id="g" maxlength="160" value="]] .. esc(p.goal) .. [[" placeholder="e.g. find out what Sam needs tested">
+    <input id="g" maxlength="160" value="]] .. esc(p.goal) .. [[" placeholder="e.g. find out what their team needs and whether there's paid work">
     <p class="q">Prep notes <span>· questions to ask, things to mention</span></p>
-    <textarea id="n" style="height:96px" maxlength="800">]] .. esc(p.notes) .. [[</textarea>
-    <div class="row"><button class="go" onclick="]] .. send("{save:true,goal:g.value,notes:n.value}") .. [[">Save</button>
-      <button class="no" onclick="]] .. send("{save:false}") .. [[">Close</button></div>]],
+    <textarea id="n" style="height:96px" maxlength="2000">]] .. esc(p.notes) .. [[</textarea>
+    <div class="row"><button class="go" onclick="]] .. send("Object.assign({save:true}," .. fields .. ")") .. [[">Save</button>
+      <button class="no" id="gi" onclick="thinking();]] .. send("Object.assign({ideas:true}," .. fields .. ")") .. [[">Get ideas</button>
+      <button class="no" onclick="]] .. send("{save:false}") .. [[">Close</button></div>
+    <div id="ideas"></div>]],
     function(b)
+      if b.ideas then
+        local call = { title = ev.adhoc and b.title or ev.title, when = ev.adhoc and "" or when(ev), people = ev.people or {},
+                       about = b.about or "", goal = b.goal or "", notes = b.notes or "" }
+        local file = os.getenv("TMPDIR") .. "call-ideas.json"         -- the call's details, read by meeting_ideas.py
+        hs.json.write(call, file, false, true)
+        M.ideasTask = hs.task.new(PYTHON, function(_, out)            -- kept on M so it isn't thrown away mid-run
+          M.ideasTask = nil
+          local ok, d = pcall(hs.json.decode, out or "")
+          if not ok or type(d) ~= "table" then d = { error = "Couldn't get ideas this time. Try again in a minute." } end
+          if panel == pnl then pnl:evaluateJavaScript("showIdeas(" .. hs.json.encode(d) .. ")") end
+        end, { HERE .. "/meeting_ideas.py", file })
+        M.ideasTask:start()
+        return
+      end
       closePanel()
       if not b.save then return end
       local fresh = readPrep()
-      fresh[ev.id] = { goal = b.goal or "", notes = b.notes or "", title = ev.title, start = ev.start, saved = os.time() }
+      local title = ev.adhoc and ((b.title or "") ~= "" and b.title or "A call") or ev.title
+      fresh[ev.id] = { goal = b.goal or "", notes = b.notes or "", about = b.about or "", title = title,
+                       start = ev.start, saved = os.time() }
       writePrep(fresh)
-      hs.alert.show("Prep saved for " .. ev.title, 2)
+      hs.alert.show("Prep saved for " .. title, 2)
     end, "Prep for this call")
 end
 
@@ -277,6 +340,13 @@ local function upcomingMenu()
   end
   if #items == 0 then
     items = { { title = hs.fs.attributes(CAL_FILE) and "No calls in the next two weeks" or "Calendar not read yet", disabled = true } }
+  end
+  table.insert(items, { title = "-" })
+  table.insert(items, { title = "Prep a call that's not on my calendar…", fn = function() M.prepFor({ id = "adhoc-" .. os.time(), adhoc = true }) end })
+  for id, p in pairs(prep) do                                       -- earlier preps for calls not on the calendar
+    if id:match("^adhoc%-") and tonumber(id:sub(7)) and os.time() - tonumber(id:sub(7)) < 14 * 86400 then
+      table.insert(items, { title = "    " .. (p.title or "A call") .. " (your prep)", fn = function() M.prepFor({ id = id, adhoc = true }) end })
+    end
   end
   table.insert(items, { title = "-" })
   table.insert(items, { title = "✓ means you've set a goal. Click any call to prep it.", disabled = true })
@@ -510,6 +580,9 @@ function M.menuItems()
   add({ title = "Recent meetings", menu = recent() })
   if hs.fs.attributes(MEET .. "/calls.html") then
     add({ title = "All my calls: grades and trends", fn = function() hs.execute("open '" .. MEET .. "/calls.html'") end })
+  end
+  if hs.fs.attributes(MEET .. "/Learnings.md") then                 -- the reviews as markdown (meeting_learnings.py)
+    add({ title = "My learnings, across all calls", fn = function() hs.execute("open '" .. MEET .. "/Learnings.md'") end })
   end
   add({ title = "Open my Meetings folder", fn = function() hs.execute("open '" .. MEET .. "'") end })
   return items
