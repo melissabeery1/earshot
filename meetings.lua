@@ -182,12 +182,25 @@ function M.prepFor(ev)
 end
 
 -- Calls coming up, for the menu and for matching a call when recording starts.
+-- If the calendar check hasn't finished yet, fall back to the last saved calendar file, so calls still show.
 local function upcoming()
+  if #M.events == 0 and hs.fs.attributes(CAL_FILE) then
+    local saved = hs.json.read(CAL_FILE)
+    if type(saved) == "table" and not saved.error then M.events = saved end
+  end
   local out, now, seen = {}, os.time(), {}
   for _, ev in ipairs(M.events) do
     local t = evTime(ev)
-    local key = (ev.title or "") .. "|" .. tostring(t)              -- the same call on two calendars shows once
-    if ev.is_call and t and t > now - 3600 and not seen[key] then seen[key] = true; out[#out + 1] = ev end
+    local link = (ev.video or ""):gsub("[%)%s]+$", "")
+    local name = (ev.title or ""):gsub("%s+$", "")
+    -- the same call on two calendars shows once: same start, and the same title or the same video link
+    local key = tostring(t) .. "|" .. name
+    if link ~= "" and seen[tostring(t) .. "|" .. link] then key = tostring(t) .. "|" .. link end
+    if ev.is_call and t and t > now - 3600 and not seen[key] then
+      seen[tostring(t) .. "|" .. name] = true
+      if link ~= "" then seen[tostring(t) .. "|" .. link] = true end
+      out[#out + 1] = ev
+    end
   end
   table.sort(out, function(a, b) return evTime(a) < evTime(b) end)
   return out

@@ -333,6 +333,7 @@ Then choose **Restart dictation** in the menu.
 | What you see | What to do |
 |---|---|
 | Nothing happens when you hold Fn | Wait 5 seconds and try again: dictation turns the Fn listener back on by itself if macOS switched it off. Still nothing? Check Accessibility for Hammerspoon, then Restart dictation |
+| Stuck on "Writing…" | Wait 20 seconds: if the speech server froze, dictation restarts it and says so. Then try again |
 | Hammerspoon is frozen and won't quit | Press Option-Command-Escape, choose Hammerspoon and click Force Quit, then open it again. If it keeps happening, open the Hammerspoon console and look at the last lines before the freeze |
 | "Dictation is starting up" | The speech model takes a few seconds to load after login |
 | Dictation types nonsense | Check which mic it's using: it's built to use the Mac's own. Bluetooth headset mics are muffled and confuse Whisper |
@@ -437,6 +438,7 @@ Whisper takes about a second, and people start answering faster than that. So th
 - **Review notifications come through a marker file.** The review runs as a detached process, so it can't call back into Hammerspoon. Instead it drops a `review-new` file, and a folder watcher turns that into a clickable notification.
 - **Panels that take typing are small web views.** Hammerspoon's drawing canvas can't take keyboard input, so the record, prep, goal and self-rating panels are tiny web pages that post their answers back. They never take focus from your call app until you click into them. The goal box first used Hammerspoon's built-in text prompt. That prompt is modal: until it's answered, all of Hammerspoon stops, dictation included, and the app can't be quit. When it slipped behind other windows, the whole thing looked broken.
 - **Dictation repairs itself.** macOS switches off a key listener (an event tap) whenever the app that owns it stalls, even briefly, and never switches it back on. Fn simply stopped working until a restart. A 5-second check now turns the listener back on and restarts the speech server or the recorder if either has stopped.
+- **A frozen server gets replaced.** whisper-server can freeze without quitting: it keeps its port and never answers, so a check for "is it running" passes while every clip waits forever. Each clip now has a 20-second limit, and the warm-up clip every 2.5 minutes doubles as a health check. Either one timing out forces the server off and starts a fresh one.
 - **Typesetting rules are enforced in code.** The pages pass a layout checker at four widths: no single word alone on a last line, and no sentence starting at the end of a line. The page generator joins words with non-breaking spaces where needed.
 
 ## Going fully local

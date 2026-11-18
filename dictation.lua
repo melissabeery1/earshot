@@ -1,5 +1,5 @@
 -- Hold Fn, talk, let go: the words are typed where the cursor is.
---. Everything runs on your Mac: ffmpeg records, whisper.cpp's whisper-server turns speech
+-- Everything runs on your Mac: ffmpeg records, whisper.cpp's whisper-server turns speech
 -- into text with the model kept loaded, and this file tidies the text and pastes it. No AI service, $0.
 -- Loaded by ~/.hammerspoon/init.lua. Reload after editing: Hammerspoon menu > Reload Config.
 
@@ -58,6 +58,13 @@ local function startServer()
   server:start()
 end
 killStrays()                                                      -- leftovers from an earlier load
+-- A server can freeze without quitting: it keeps its port but never answers, so every clip would sit on
+-- "Writing…" for good. A server that stops answering is forced off and started fresh.
+local function restartServer(why)
+  print("dictation: speech server stopped answering (" .. why .. "), restarting it")
+  server = nil
+  startServer()
+end
 
 ------------------------------------------------------------------ the little pill on screen
 local pill
@@ -149,6 +156,7 @@ function M.weekStats()
 end
 
 ------------------------------------------------------------------ sending the recording to the server
+local working = false                                                -- a clip is on its way to the server
 local transcribe
 function transcribe(WAV)
   local f = io.open(WAV, "rb")
@@ -160,9 +168,18 @@ function transcribe(WAV)
     .. "--" .. b .. "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.wav\"\r\nContent-Type: audio/wav\r\n\r\n"
     .. audio .. "\r\n--" .. b .. "--\r\n"
   show("Writing…")
+  local done = false
+  local guard = hs.timer.doAfter(math.max(20, (lastHeld or 0) * 2), function()   -- no answer: the server is stuck
+    if done then return end
+    done = true; working = false; hide(); os.remove(WAV)
+    restartServer("a clip got no answer")
+    hs.alert.show("Dictation got stuck and is restarting. Try again in 10 seconds.")
+  end)
   hs.http.asyncPost("http://127.0.0.1:" .. PORT .. "/inference", body,
     { ["Content-Type"] = "multipart/form-data; boundary=" .. b },
     function(status, text)
+      if done then return end
+      done = true; guard:stop()
       working = false
       hide()
       os.remove(WAV)                                                 -- the words are back, so the voice clip goes
@@ -183,13 +200,12 @@ function transcribe(WAV)
 end
 
 ------------------------------------------------------------------ holding Fn, or double-tapping it for hands-free
--- Hold Fn: records until you let go. Double-tap Fn: keeps recording with you hands free until you tap Fn
+-- Hold Fn: records until you let go. Double-tap Fn: keeps recording with your hands free until you tap Fn
 -- once more (Escape throws it away). Hands-free stops by itself after five minutes.
 local rec, started, cancelled, showTimer                              -- rec is true while the mic is recording
 local latched, stopOnRelease, lastTap, latchTimer = false, false, 0, nil
 local DOUBLE_TAP = 0.5
 local clipNo = 0
-local working = false                                                -- a clip is on its way to the server
 
 -- The recorder stays running and waits for "start", "stop" or "cancel". After "stop" it keeps listening
 -- 0.3 seconds more, so the last word isn't clipped, then says "done" and the clip goes to the server.
@@ -368,7 +384,9 @@ M.busy = function() return rec ~= nil end                            -- the meet
 -- Keep the model warm: every 2.5 minutes a 1.5-second test clip, skipped while you're dictating.
 M.warm = hs.timer.doEvery(150, function()
   if rec or working then return end
-  hs.task.new("/usr/bin/curl", nil, { "-s", "-m", "20", "-o", "/dev/null", "-F", "file=@" .. WARM,
+  hs.task.new("/usr/bin/curl", function(code)
+    if code == 28 and not rec and not working then restartServer("the warm-up clip got no answer") end
+  end, { "-s", "-m", "20", "-o", "/dev/null", "-F", "file=@" .. WARM,
     "-F", "response_format=text", "http://127.0.0.1:" .. PORT .. "/inference" }):start()
 end)
 
